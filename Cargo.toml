@@ -1,0 +1,21 @@
+[package]
+name = "concurrently"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+async-trait = "0.1"
+cargo_toml = "0.10"
+clap = { version = "3.0.0-rc.4", features = ["derive"] }
+colored = "2.0"
+futures = "0.3"
+serde = { version = "1.0", features = ["derive"] }
+tokio = { version = "1.14", features = [
+  "io-util",
+  "macros",
+  "rt",
+  "rt-multi-thread",
+  "time",
+  "process",
+] }
+toml = "0.5"
