@@ -1,4 +1,7 @@
-use std::process::{ExitStatus, Stdio};
+use std::{
+    process::{ExitStatus, Stdio},
+    time::Duration,
+};
 
 use colored::{Color, Colorize};
 use tokio::{
@@ -6,14 +9,21 @@ use tokio::{
     process::Command,
 };
 
-use crate::Mode;
+#[derive(Clone)]
+pub enum TaskType {
+    CargoWorkspaceMember(String, bool),
+    Command(Vec<String>),
+}
 
 #[derive(Clone)]
 pub struct Task {
     pub name: String,
+    pub task_type: TaskType,
     pub color: Color,
     pub tag_padding: usize,
     pub retries: usize,
+    pub max_retries: usize,
+    pub delay: Option<Duration>,
 }
 
 impl Task {
@@ -30,19 +40,27 @@ impl Task {
         tag
     }
 
-    pub async fn prepare(&self, mode: Mode) -> io::Result<ExitStatus> {
-        let mut cmd = Command::new("cargo");
+    pub async fn prepare(&self) -> Option<io::Result<ExitStatus>> {
+        let cmd = match &self.task_type {
+            TaskType::CargoWorkspaceMember(name, release) => {
+                let mut cmd = Command::new("cargo");
 
-        cmd.arg("build")
-            .arg("--package")
-            .arg(&self.name)
-            .arg("--quiet");
-        if mode == Mode::Release {
-            cmd.arg("--release");
-        }
+                cmd.arg("build").arg("--package").arg(name).arg("--quiet");
+
+                if *release {
+                    cmd.arg("--release");
+                }
+
+                cmd
+            }
+            TaskType::Command(_) => return None,
+        };
 
         let tag = self.tag();
-        let status = exec(cmd, &tag).await?;
+        let status = match exec(cmd, &tag).await {
+            Ok(status) => status,
+            Err(err) => return Some(Err(err)),
+        };
 
         if status.success() {
             println!("{} {}", tag, "successfully built".bold().white());
@@ -50,11 +68,29 @@ impl Task {
             println!("{} {}", tag, "failed to build".bold().red());
         }
 
-        Ok(status)
+        Some(Ok(status))
     }
 
-    pub async fn run(&self, mode: Mode) -> io::Result<ExitStatus> {
-        let cmd = Command::new(format!("./target/{}/{}", mode.to_string(), self.name));
+    pub async fn run(&self) -> io::Result<ExitStatus> {
+        let cmd = match &self.task_type {
+            TaskType::CargoWorkspaceMember(name, release) => Command::new(format!(
+                "./target/{}/{}",
+                if *release { "release" } else { "debug" },
+                name
+            )),
+            TaskType::Command(args) => {
+                let mut cmd = Command::new("sh");
+                cmd.arg("-c");
+                // let mut cmd = Command::new(args.first().unwrap());
+                cmd.arg(args.join(" "));
+                // cmd.env(
+                //     "DATABASE_URL",
+                //     "postgres://auth:9c46082fb99e381521205b7f@127.0.0.1:6001/auth",
+                // );
+                // cmd.env("REDPANDA_HOST", "127.0.0.1:9092");
+                cmd
+            }
+        };
 
         let tag = self.tag();
         let status = exec(cmd, &tag).await?;

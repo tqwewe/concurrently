@@ -2,14 +2,19 @@ use std::collections::HashMap;
 
 use serde::Deserialize;
 
-#[derive(Deserialize)]
+#[derive(Default, Deserialize)]
+#[serde(default)]
 pub struct Config {
     pub tasks: HashMap<String, TaskOptions>,
 }
 
-#[derive(Deserialize)]
+#[derive(Default, Deserialize)]
+#[serde(default)]
 pub struct TaskOptions {
+    pub env_file: Option<String>,
     pub cargo_workspace_member: bool,
-    pub command: Vec<String>,
+    pub command: Option<Vec<String>>,
+    pub delay: Option<u64>,
     pub retries: usize,
+    pub release: bool,
 }
