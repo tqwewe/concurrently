@@ -53,6 +53,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let tasks_file = fs::read_to_string("./tasks.toml").await?;
     let config: Config = toml::from_str(&tasks_file)?;
 
+    if let Some(env) = config.env {
+        match dotenv::from_filename(&env) {
+            Ok(_) => {
+                info(format!("loaded env file {}", env));
+            }
+            Err(_) => {
+                warn(format!("failed to load env file {}", env));
+            }
+        }
+    }
+
     let tasks: Vec<_> = config
         .tasks
         .into_iter()

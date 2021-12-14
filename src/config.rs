@@ -6,6 +6,7 @@ use serde::Deserialize;
 #[serde(default)]
 pub struct Config {
     pub tasks: HashMap<String, TaskOptions>,
+    pub env: Option<String>,
 }
 
 #[derive(Default, Deserialize)]
