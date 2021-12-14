@@ -1,7 +1,17 @@
 [package]
 name = "concurrently"
 version = "0.1.0"
+authors = ["Ari Seyhun <ariseyhun@live.com.au>"]
 edition = "2021"
+description = "Run multiple processes concurrently."
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/Acidic9/concurrently"
+categories = ["command-line-utilities"]
+keywords = ["tasks", "concurrently", "cli", "parallel"]
+
+[[bin]]
+name = "concurrently"
+path = "src/main.rs"
 
 [dependencies]
 async-trait = "0.1"
