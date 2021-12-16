@@ -2,8 +2,6 @@ pre_bump_hooks = [
   "echo 'bumping from {{latest}} to {{version}}'",
   "cargo bump {{version}}",
   "cargo build --release",
-  "sleep 2",
-  "git add Cargo.toml Cargo.lock",
 ]
 post_bump_hooks = ["git push", "git push origin {{version}}", "cargo publish"]
 
