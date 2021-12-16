@@ -15,6 +15,7 @@ pub struct TaskOptions {
     pub env_file: Option<String>,
     pub cargo_workspace_member: bool,
     pub prepare: Option<String>,
+    pub command: Option<String>,
     pub delay: Option<u64>,
     pub retries: usize,
     pub release: bool,

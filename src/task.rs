@@ -12,7 +12,7 @@ use tokio::{
 #[derive(Clone)]
 pub enum TaskType {
     CargoWorkspaceMember(String, bool),
-    Command(Vec<String>),
+    Command(String),
 }
 
 #[derive(Clone)]
@@ -111,16 +111,10 @@ impl Task {
                 if *release { "release" } else { "debug" },
                 name
             )),
-            TaskType::Command(args) => {
+            TaskType::Command(c) => {
                 let mut cmd = Command::new("sh");
                 cmd.arg("-c");
-                // let mut cmd = Command::new(args.first().unwrap());
-                cmd.arg(args.join(" "));
-                // cmd.env(
-                //     "DATABASE_URL",
-                //     "postgres://auth:9c46082fb99e381521205b7f@127.0.0.1:6001/auth",
-                // );
-                // cmd.env("REDPANDA_HOST", "127.0.0.1:9092");
+                cmd.arg(c.replace('\n', " "));
                 cmd
             }
         };
