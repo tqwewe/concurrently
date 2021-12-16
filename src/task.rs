@@ -20,6 +20,7 @@ pub struct Task {
     pub name: String,
     pub task_type: TaskType,
     pub color: Color,
+    pub prepare: Option<String>,
     pub tag_padding: usize,
     pub retries: usize,
     pub max_retries: usize,
@@ -68,7 +69,39 @@ impl Task {
             println!("{} {}", tag, "failed to build".bold().red());
         }
 
-        Some(Ok(status))
+        if let Some(prepare) = &self.prepare {
+            let mut cmd = Command::new("sh");
+            cmd.arg("-c");
+            cmd.arg(prepare.replace('\n', " "));
+
+            let tag = self.tag();
+            let status = match exec(cmd, &tag).await {
+                Ok(status) => status,
+                Err(err) => return Some(Err(err)),
+            };
+
+            if status.success() {
+                println!(
+                    "{} {}",
+                    tag,
+                    format!("process exited with status code {}", status)
+                        .bold()
+                        .white()
+                );
+            } else {
+                println!(
+                    "{} {}",
+                    tag,
+                    format!("process exited with status code {}", status)
+                        .bold()
+                        .red()
+                );
+            }
+
+            Some(Ok(status))
+        } else {
+            Some(Ok(status))
+        }
     }
 
     pub async fn run(&self) -> io::Result<ExitStatus> {

@@ -14,7 +14,7 @@ pub struct Config {
 pub struct TaskOptions {
     pub env_file: Option<String>,
     pub cargo_workspace_member: bool,
-    pub command: Option<Vec<String>>,
+    pub prepare: Option<String>,
     pub delay: Option<u64>,
     pub retries: usize,
     pub release: bool,

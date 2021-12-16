@@ -113,6 +113,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 name,
                 task_type,
                 color,
+                prepare: opts.prepare,
                 tag_padding,
                 retries: 0,
                 max_retries: opts.retries,
