@@ -2,6 +2,14 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## 0.2.0 - 2021-12-16
+#### Build system
+- remove commands from cog pre bump hook - (42a2763) - Ari Seyhun
+#### Features
+- change command from list of strings to single string - (0a259d0) - Ari Seyhun
+- add `prepare` command to task config - (07d6f98) - Ari Seyhun
+- - -
+
 ## 0.1.1 - 2021-12-14
 #### Build system
 - add pre cog bump hooks - (4f5a7cb) - Ari Seyhun
