@@ -1,18 +1,16 @@
+extern crate concurrently;
+
 use std::{process, time::Duration};
 
 use clap::Parser;
 use colored::Color;
-use config::Config;
 use futures::{stream::FuturesUnordered, FutureExt, StreamExt};
-use log::{error, info};
-use task::TaskType;
 use tokio::{fs, io, time};
 
-use crate::{log::warn, task::Task};
-
-mod config;
-mod log;
-mod task;
+use concurrently::task::TaskType;
+use concurrently::log::{error, info};
+use concurrently::config::Config;
+use concurrently::{log::warn, task::Task};
 
 const COLORS: [Color; 10] = [
     Color::Green,
@@ -34,11 +32,15 @@ struct Args {
     /// Tasks to run
     #[clap(global = true)]
     tasks: Vec<String>,
+
+    #[clap(short, long)]
+    file: Option<String>,
 }
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
+    println!("{:?}", args);
     let selected_tasks: Vec<_> = args
         .tasks
         .into_iter()
@@ -49,6 +51,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .collect::<Vec<_>>()
         })
         .collect();
+
+
 
     let tasks_file = fs::read_to_string("./tasks.toml").await?;
     let config: Config = toml::from_str(&tasks_file)?;
