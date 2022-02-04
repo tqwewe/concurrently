@@ -3,142 +3,95 @@ use std::{
     time::Duration,
 };
 
-use colored::{Color, Colorize};
+use crate::TaskNamer;
+use colored::Colorize;
 use tokio::{
     io::{self, AsyncBufReadExt, BufReader},
     process::Command,
+    time,
 };
 
-#[derive(Clone)]
-pub enum TaskType {
-    CargoWorkspaceMember(String, bool),
-    Command(String),
-}
-
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Task {
     pub name: String,
-    pub task_type: TaskType,
-    pub color: Color,
-    pub prepare: Option<String>,
+    pub command: String,
     pub tag_padding: usize,
+    /// Number of retries already executed
     pub retries: usize,
+    /// Maximum number of retries we will attempt
     pub max_retries: usize,
     pub delay: Option<Duration>,
+    pub last_exit_status: Option<ExitStatus>,
+}
+
+impl Default for Task {
+    fn default() -> Self {
+        Task {
+            name: "default".to_string(),
+            command: "true".to_string(),
+            tag_padding: 0,
+            retries: 0,
+            max_retries: 3,
+            delay: None,
+            last_exit_status: None,
+        }
+    }
 }
 
 impl Task {
+    pub fn from_cli(command: String, counter: &TaskNamer) -> Self {
+        let name = counter.next();
+        Task {
+            name,
+            command,
+            ..Default::default()
+        }
+    }
+
     fn tag(&self) -> String {
         let mut tag = " ".repeat(self.tag_padding);
-        tag.push_str(
-            &format!(" {} ", self.name.to_uppercase())
-                .bold()
-                .on_color(self.color)
-                .truecolor(0, 0, 0)
-                .to_string(),
-        );
-        tag.push_str("  ");
+        tag.push_str(self.name.as_str());
         tag
     }
 
-    pub async fn prepare(&self) -> Option<io::Result<ExitStatus>> {
-        let cmd = match &self.task_type {
-            TaskType::CargoWorkspaceMember(name, release) => {
-                let mut cmd = Command::new("cargo");
+    pub fn should_retry(&self) -> bool {
+        false
+    }
 
-                cmd.arg("build").arg("--package").arg(name).arg("--quiet");
+    pub fn in_error_state(&self) -> bool {
+        self.last_exit_status.map(|s| !s.success()).unwrap_or(false)
+    }
 
-                if *release {
-                    cmd.arg("--release");
-                }
-
-                cmd
-            }
-            TaskType::Command(_) => return None,
-        };
-
-        let tag = self.tag();
-        let status = match exec(cmd, &tag).await {
-            Ok(status) => status,
-            Err(err) => return Some(Err(err)),
-        };
-
-        if status.success() {
-            println!("{} {}", tag, "successfully built".bold().white());
-        } else {
-            println!("{} {}", tag, "failed to build".bold().red());
+    pub async fn spawn(mut self) -> Result<Task, io::Error> {
+        if let Some(delay) = self.delay {
+            time::sleep(delay).await;
         }
 
-        if let Some(prepare) = &self.prepare {
-            let mut cmd = Command::new("sh");
-            cmd.arg("-c");
-            cmd.arg(prepare.replace('\n', " "));
-
-            let tag = self.tag();
-            let status = match exec(cmd, &tag).await {
-                Ok(status) => status,
-                Err(err) => return Some(Err(err)),
-            };
-
-            if status.success() {
-                println!(
-                    "{} {}",
-                    tag,
-                    format!("process exited with status code {}", status)
-                        .bold()
-                        .white()
-                );
-            } else {
-                println!(
-                    "{} {}",
-                    tag,
-                    format!("process exited with status code {}", status)
-                        .bold()
-                        .red()
-                );
-            }
-
-            Some(Ok(status))
-        } else {
-            Some(Ok(status))
-        }
+        let status = self.run().await?;
+        self.last_exit_status = Some(status);
+        Result::<_, io::Error>::Ok(self)
     }
 
     pub async fn run(&self) -> io::Result<ExitStatus> {
-        let cmd = match &self.task_type {
-            TaskType::CargoWorkspaceMember(name, release) => Command::new(format!(
-                "./target/{}/{}",
-                if *release { "release" } else { "debug" },
-                name
-            )),
-            TaskType::Command(c) => {
-                let mut cmd = Command::new("sh");
-                cmd.arg("-c");
-                cmd.arg(c.replace('\n', " "));
-                cmd
-            }
+        let cmd = {
+            println!("{} {}", self.tag(), format!("Running {}", self.command).white());
+            let mut cmd = Command::new("sh");
+            cmd.kill_on_drop(true);
+            cmd.arg("-c");
+            cmd.arg(self.command.replace('\n', " "));
+            cmd
         };
 
-        let tag = self.tag();
-        let status = exec(cmd, &tag).await?;
+        let status = exec(cmd, &self.tag()).await?;
 
+        let mut status_message = format!("process exited with status code {}", status).bold();
         if status.success() {
-            println!(
-                "{} {}",
-                tag,
-                format!("process exited with status code {}", status)
-                    .bold()
-                    .white()
-            );
+            status_message = status_message.white();
         } else {
-            println!(
-                "{} {}",
-                tag,
-                format!("process exited with status code {}", status)
-                    .bold()
-                    .red()
-            );
+            status_message = status_message.red();
         }
+
+        println!("{} {}", self.tag(), status_message);
 
         Ok(status)
     }
@@ -175,7 +128,7 @@ async fn exec(mut cmd: Command, tag: &str) -> io::Result<ExitStatus> {
     tokio::spawn(async move {
         while let Some(line) = stderr_reader.next_line().await.unwrap() {
             if !line.trim().is_empty() {
-                println!("{} {}", tag_cloned, line.red());
+                println!("{} {}", tag_cloned, line);
             }
         }
     });
