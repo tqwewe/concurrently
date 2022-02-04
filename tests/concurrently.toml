@@ -1,0 +1,10 @@
+env = ".env"
+
+[tasks.inception]
+before_command = "true"
+command = "cargo:concurrently"
+release = true
+
+[tasks.listdir]
+prepare = ""
+command = """ls -l"""

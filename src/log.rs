@@ -2,7 +2,7 @@ use std::{fmt, process};
 
 use colored::Colorize;
 
-pub trait UnwrapResult<T> {
+pub(crate) trait UnwrapResult<T> {
     fn unwrap_error(self, msg: impl fmt::Display) -> T;
     fn unwrap_warn(self, msg: impl fmt::Display) -> T;
 }
@@ -52,16 +52,16 @@ impl<T> UnwrapResult<T> for Option<T> {
 }
 
 pub fn info(msg: impl fmt::Display) {
-    let tag = "[info]:".bold().blue();
-    println!("{} {}", tag, msg);
+    let msg = format!("--> {}", msg).white();
+    println!("{}", msg);
 }
 
 pub fn error(msg: impl fmt::Display) {
-    let tag = "[error]:".bold().red();
+    let tag = "[error] ".bold().red();
     println!("{} {}", tag, msg);
 }
 
 pub fn warn(msg: impl fmt::Display) {
-    let tag = "[warn]:".bold().yellow();
+    let tag = "[warn] ".bold().yellow();
     println!("{} {}", tag, msg);
 }
