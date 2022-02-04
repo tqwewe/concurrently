@@ -3,16 +3,17 @@
 // Licensed under the MIT License
 // Copyright (c) 2015 Andrew Gallant
 
-use std::env;
-use std::error;
-use std::ffi::OsStr;
-use std::fs::{self, File};
-use std::io::{self, Write};
-use std::path::{Path, PathBuf};
-use std::process::{self, Command};
-use std::sync::atomic::{AtomicUsize, Ordering};
-use std::thread;
-use std::time::Duration;
+use std::{
+    env, error,
+    ffi::OsStr,
+    fs::{self, File},
+    io::{self, Write},
+    path::{Path, PathBuf},
+    process::{self, Command},
+    sync::atomic::{AtomicUsize, Ordering},
+    thread,
+    time::Duration,
+};
 
 static TEST_DIR: &'static str = "ripgrep-tests";
 static NEXT_ID: AtomicUsize = AtomicUsize::new(0);
@@ -28,17 +29,10 @@ pub fn setup(test_name: &str) -> (Dir, TestCommand) {
     (dir, cmd)
 }
 
-/// Like `setup`, but uses PCRE2 as the underlying regex engine.
-pub fn setup_pcre2(test_name: &str) -> (Dir, TestCommand) {
-    let mut dir = Dir::new(test_name);
-    dir.pcre2(true);
-    let cmd = dir.command();
-    (dir, cmd)
-}
-
 /// Break the given string into lines, sort them and then join them back
 /// together. This is useful for testing output from ripgrep that may not
 /// always be in the same order.
+#[allow(dead_code)]
 pub fn sort_lines(lines: &str) -> String {
     let mut lines: Vec<&str> = lines.trim().lines().collect();
     lines.sort();
@@ -47,6 +41,7 @@ pub fn sort_lines(lines: &str) -> String {
 
 /// Returns true if and only if the given program can be successfully executed
 /// with a `--help` flag.
+#[allow(dead_code)]
 pub fn cmd_exists(program: &str) -> bool {
     Command::new(program).arg("--help").output().is_ok()
 }
@@ -66,6 +61,7 @@ pub struct Dir {
     pcre2: bool,
 }
 
+#[allow(dead_code)]
 impl Dir {
     /// Create a new test working directory with the given name. The name
     /// does not need to be distinct for each invocation, but should correspond
@@ -77,13 +73,19 @@ impl Dir {
             .parent()
             .expect("executable's directory")
             .to_path_buf();
-        let dir =
-            env::temp_dir().join(TEST_DIR).join(name).join(&format!("{}", id));
+        let dir = env::temp_dir()
+            .join(TEST_DIR)
+            .join(name)
+            .join(&format!("{}", id));
         if dir.exists() {
             nice_err(&dir, fs::remove_dir_all(&dir));
         }
         nice_err(&dir, repeat(|| fs::create_dir_all(&dir)));
-        Dir { root: root, dir: dir, pcre2: false }
+        Dir {
+            root: root,
+            dir: dir,
+            pcre2: false,
+        }
     }
 
     /// Use PCRE2 for this test.
@@ -106,11 +108,7 @@ impl Dir {
     /// Try to create a new file with the given name and contents in this
     /// directory.
     #[allow(dead_code)] // unused on Windows
-    pub fn try_create<P: AsRef<Path>>(
-        &self,
-        name: P,
-        contents: &str,
-    ) -> io::Result<()> {
+    pub fn try_create<P: AsRef<Path>>(&self, name: P, contents: &str) -> io::Result<()> {
         let path = self.dir.join(name);
         self.try_create_bytes(path, contents.as_bytes())
     }
@@ -131,11 +129,7 @@ impl Dir {
 
     /// Try to create a new file with the given name and contents in this
     /// directory.
-    pub fn try_create_bytes<P: AsRef<Path>>(
-        &self,
-        name: P,
-        contents: &[u8],
-    ) -> io::Result<()> {
+    pub fn try_create_bytes<P: AsRef<Path>>(&self, name: P, contents: &[u8]) -> io::Result<()> {
         let path = self.dir.join(name);
         let mut file = File::create(path)?;
         file.write_all(contents)?;
@@ -167,12 +161,18 @@ impl Dir {
     pub fn command(&self) -> TestCommand {
         let mut cmd = self.bin();
         cmd.current_dir(&self.dir);
-        TestCommand { dir: self.clone(), cmd: cmd }
+        TestCommand {
+            dir: self.clone(),
+            cmd: cmd,
+        }
     }
 
     /// Returns the path to the ripgrep executable.
     pub fn bin(&self) -> process::Command {
-        let rg = self.root.join(format!("../concurrently{}", env::consts::EXE_SUFFIX));
+        let rg = self
+            .root
+            .join(format!("../concurrently{}", env::consts::EXE_SUFFIX));
+        println!("exec: {}", rg.to_string_lossy());
         match cross_runner() {
             None => process::Command::new(rg),
             Some(runner) => {
@@ -213,11 +213,7 @@ impl Dir {
     /// Creates a file symlink to the src with the given target name
     /// in this directory.
     #[cfg(not(windows))]
-    pub fn link_file<S: AsRef<Path>, T: AsRef<Path>>(
-        &self,
-        src: S,
-        target: T,
-    ) {
+    pub fn link_file<S: AsRef<Path>, T: AsRef<Path>>(&self, src: S, target: T) {
         self.link_dir(src, target);
     }
 
@@ -225,11 +221,7 @@ impl Dir {
     /// in this directory.
     #[cfg(windows)]
     #[allow(dead_code)] // unused on Windows
-    pub fn link_file<S: AsRef<Path>, T: AsRef<Path>>(
-        &self,
-        src: S,
-        target: T,
-    ) {
+    pub fn link_file<S: AsRef<Path>, T: AsRef<Path>>(&self, src: S, target: T) {
         use std::os::windows::fs::symlink_file;
         let src = self.dir.join(src);
         let target = self.dir.join(target);
@@ -247,6 +239,7 @@ pub struct TestCommand {
     cmd: Command,
 }
 
+#[allow(dead_code)]
 impl TestCommand {
     /// Returns a mutable reference to the underlying command.
     pub fn cmd(&mut self) -> &mut Command {
@@ -261,9 +254,9 @@ impl TestCommand {
 
     /// Add any number of arguments to the command.
     pub fn args<I, A>(&mut self, args: I) -> &mut TestCommand
-        where
-            I: IntoIterator<Item = A>,
-            A: AsRef<OsStr>,
+    where
+        I: IntoIterator<Item = A>,
+        A: AsRef<OsStr>,
     {
         self.cmd.args(args);
         self
@@ -286,10 +279,18 @@ impl TestCommand {
         match stdout.parse() {
             Ok(t) => t,
             Err(err) => {
-                panic!(
-                    "could not convert from string: {:?}\n\n{}",
-                    err, stdout
-                );
+                panic!("could not convert from string: {:?}\n\n{}", err, stdout);
+            }
+        }
+    }
+
+    pub fn err_stdout(&mut self) -> String {
+        let o = self.assert_err();
+        let stdout = String::from_utf8_lossy(&o.stdout);
+        match stdout.parse() {
+            Ok(t) => t,
+            Err(err) => {
+                panic!("could not convert from string: {:?}\n\n{}", err, stdout);
             }
         }
     }
@@ -315,10 +316,7 @@ impl TestCommand {
         match stdout.parse() {
             Ok(t) => t,
             Err(err) => {
-                panic!(
-                    "could not convert from string: {:?}\n\n{}",
-                    err, stdout
-                );
+                panic!("could not convert from string: {:?}\n\n{}", err, stdout);
             }
         }
     }
@@ -330,7 +328,7 @@ impl TestCommand {
     }
 
     /// Runs the command and asserts that it resulted in an error exit code.
-    pub fn assert_err(&mut self) {
+    pub fn assert_err(&mut self) -> process::Output {
         let o = self.cmd.output().unwrap();
         if o.status.success() {
             panic!(
@@ -347,6 +345,7 @@ impl TestCommand {
                 String::from_utf8_lossy(&o.stderr)
             );
         }
+        o
     }
 
     /// Runs the command and asserts that its exit code matches expected exit
