@@ -49,3 +49,29 @@ $ cargo concurrently
 <p align="center">
   <img src="https://raw.githubusercontent.com/Acidic9/concurrently/main/terminal-screenshot.png">
 </p>
+
+## Good to Know 
+
+- `watch -n1 -d echo 'Hello from Demo 1 - $(date)'` - nice command to generate endless process, problem: does not write to stdout
+- Endless echo loop: `while true ; do echo "Hello from Demo 1 - $(date)" ; sleep 1 ; done`
+
+## Build MacOS Release (when running on MacOS Intel)
+
+1. `cargo build --release`
+
+## Cross-Compile 
+
+Instructions for how to do cross-platform compile: https://kerkour.com/rust-cross-compilation
+
+TL;DR from Mac (Intel) to Windows
+
+1. Install `cargo install -f cross`
+2. Run `cross build --target x86_64-pc-windows-gnu --release`
+
+TL;DR from Mac (Intel) to Linux (WIP)
+1. Run `cross build --target x86_64-unknown-linux-gnu --release`
+2. Run `cross build --target aarch64-unknown-linux-gnu --release`
+
+## TODO 
+
+- Build github actions pipe to autobuild this tool
