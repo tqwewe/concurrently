@@ -49,3 +49,7 @@ $ cargo concurrently
 <p align="center">
   <img src="https://raw.githubusercontent.com/Acidic9/concurrently/main/terminal-screenshot.png">
 </p>
+
+## Good to Know 
+
+- watch -n1 -d echo 'Hello from Demo 1 - $(date)' - nice command to generate endless process, problem: does not write to stdout
