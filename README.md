@@ -66,11 +66,11 @@ Instructions for how to do cross-platform compile: https://kerkour.com/rust-cros
 TL;DR from Mac (Intel) to Windows
 
 1. Install `cargo install -f cross`
-2. Run `cross build --target x86_64-pc-windows-gnu`
+2. Run `cross build --target x86_64-pc-windows-gnu --release`
 
-TL;DR from Mac (Intel) to Linux
-1. Run `cross build --target x86_64-unknown-linux-gnu`
-2. Run `cross build --target aarch64-unknown-linux-gnu`
+TL;DR from Mac (Intel) to Linux (WIP)
+1. Run `cross build --target x86_64-unknown-linux-gnu --release`
+2. Run `cross build --target aarch64-unknown-linux-gnu --release`
 
 ## TODO 
 
