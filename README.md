@@ -54,3 +54,7 @@ $ cargo concurrently
 
 - `watch -n1 -d echo 'Hello from Demo 1 - $(date)'` - nice command to generate endless process, problem: does not write to stdout
 - Endless echo loop: `while true ; do echo "Hello from Demo 1 - $(date)" ; sleep 1 ; done`
+
+## TODO 
+
+- Figure out how to do cross-platform compile: https://kerkour.com/rust-cross-compilation
