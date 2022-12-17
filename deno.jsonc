@@ -1,5 +1,8 @@
 {
   "tasks": {
-    "build": "deno run --allow-run --allow-read=Cargo.toml,dist/package.json,dist --allow-write=dist/package.json,dist/package.json scripts/build-npm.ts"
+    // TODO: Add flags when globs are available: 
+    //  --allow-read=Cargo.toml,dist/*, npm-assets/*
+    //  --allow-write=dist/*
+    "build": "deno run --allow-run --allow-read --allow-write scripts/build-npm.ts"
   }
 }
