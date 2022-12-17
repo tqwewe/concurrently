@@ -1,3 +1,4 @@
 {
-    "deno.enablePaths": ["npm-builder", "scripts"]
+    "deno.enablePaths": ["npm-builder", "scripts"], 
+    "editor.inlayHints.enabled": "off"
 }
