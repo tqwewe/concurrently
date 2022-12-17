@@ -14,14 +14,11 @@ const PartialCargoTomlSchema = z.object({
   }),
 });
 
-const version = PartialCargoTomlSchema.parse(cargoTomlObj).package.version;
-
-// console.log(cargoToml.package.version);
-console.log(version);
+const cargoVersion = PartialCargoTomlSchema.parse(cargoTomlObj).package.version;
 
 export const packageJson = {
   name: "concurrently-rust",
-  version: "",
+  version: cargoVersion,
   description:
     "A distribution of https://github.com/bjesuiter/concurrently-rust, a Rust implementation of a similar concept to the npm concurrently package.",
   type: "module",
@@ -76,5 +73,5 @@ export async function generatePackageJson(outPath?: string) {
     { create: true },
   );
 
-  console.info(`Generated package.json!`);
+  console.info(`Generated package.json for version ${cargoVersion}!`);
 }
