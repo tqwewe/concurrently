@@ -1,5 +1,5 @@
 {
   "tasks": {
-    "build": "deno run --allow-run --allow-read=Cargo.toml --allow-write=dist/package.json scripts/build-npm.ts"
+    "build": "deno run --allow-run --allow-read=Cargo.toml,dist/package.json,dist --allow-write=dist/package.json,dist/package.json scripts/build-npm.ts"
   }
 }

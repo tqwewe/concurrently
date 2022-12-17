@@ -1,3 +1,4 @@
+import { ensureDir } from "https://deno.land/std@0.168.0/fs/mod.ts";
 import { join } from "https://deno.land/std@0.168.0/path/mod.ts";
 import { parse } from "https://deno.land/std@0.168.0/encoding/toml.ts";
 import { z } from "https://deno.land/x/zod@v3.20.2/mod.ts";
@@ -17,13 +18,12 @@ const version = PartialCargoTomlSchema.parse(cargoTomlObj).package.version;
 
 // console.log(cargoToml.package.version);
 console.log(version);
-Deno.exit();
 
 export const packageJson = {
-  name: "deno-npm",
+  name: "concurrently-rust",
   version: "",
   description:
-    "An inofficial distribution of the deno binary, a secure runtime for JavaScript and TypeScript (Offline-Install), based on deno-bin",
+    "A distribution of https://github.com/bjesuiter/concurrently-rust, a Rust implementation of a similar concept to the npm concurrently package.",
   type: "module",
   // Not needded for type module
   // main: "index.js",
@@ -33,27 +33,31 @@ export const packageJson = {
     "bin",
   ],
   bin: {
-    "deno": "./bin/deno.js",
-    "deno-bin-offline": "./bin/deno.js",
-    "deno-npm": "./bin/deno.js",
+    "concurrently": "./bin/run.mjs",
+    "concurrently-rust": "./bin/run.mjs",
   },
   scripts: {
-    "start": "node ./bin/deno.js",
-    "deno-version": "./bin/deno.js --version",
+    "start": "node ./bin/run.mjs",
+    "test": "./bin/run.mjs --help",
   },
   repository: {
     type: "git",
-    url: "git+https://github.com/codemonument/deno-bin-offline.git",
+    url: "git+https://github.com/bjesuiter/concurrently-rust",
   },
   keywords: [
-    "deno",
+    "rust",
+    "concurrently",
+    "cli",
+    "cli-tool",
+    "cli-rust",
+    "cli-tool-rust",
   ],
   author: "Benjamin Jesuiter",
   license: "MIT",
   bugs: {
-    url: "https://github.com/codemonument/deno-bin-offline/issues",
+    url: "https://github.com/bjesuiter/concurrently-rust/issues",
   },
-  homepage: "https://github.com/codemonument/deno-bin-offline#readme",
+  homepage: "https://github.com/bjesuiter/concurrently-rust#readme",
   dependencies: {},
   devDependencies: {
     "@types/node": "^18.11.9",
@@ -65,9 +69,11 @@ export async function generatePackageJson(outPath?: string) {
     outPath = `dist/`;
   }
 
+  await ensureDir(outPath);
   await Deno.writeTextFile(
     join(outPath, "package.json"),
     JSON.stringify(packageJson, null, "\t"),
+    { create: true },
   );
 
   console.info(`Generated package.json!`);
