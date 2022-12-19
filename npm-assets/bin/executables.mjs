@@ -5,7 +5,7 @@
  * key of map: `${platform}-${arch}` for faster lookup
  */
 
-export const executables = new Set([
+export const executables = new Map([
     ['win32-x64', {
         // the path to the executable, relative to the root of the package
         executablePath: "windows/concurrently.exe",
