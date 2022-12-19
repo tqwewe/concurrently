@@ -14,7 +14,7 @@ const __dirname = fileURLToPath(new URL(".", import.meta.url));
   const issuesURL = "https://github.com/bjesuiter/concurrently-rust/issues";
 
   if (!executable) {
-    const supportedPlatforms = executables.keys.join(", ");
+    const supportedPlatforms = Array.from(executables.keys).join(", ");
     throw new Error(
       `Your platform (${process.platform}, ${process.arch}) is currently not supported!
       Platforms supported: ${supportedPlatforms}.
