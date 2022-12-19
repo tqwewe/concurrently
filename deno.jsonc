@@ -3,6 +3,10 @@
     // TODO: Add flags when globs are available: 
     //  --allow-read=Cargo.toml,dist/*, npm-assets/*
     //  --allow-write=dist/*
-    "build": "deno run --allow-run --allow-read --allow-write scripts/build-npm.ts"
+    "cargo-build": "cargo build --release",
+    "build-win": "cross build --target x86_64-pc-windows-gnu --release", 
+    "build-macos": "cargo build --release",
+    "build": "deno run --allow-run --allow-read --allow-write scripts/build-npm.ts",
+    "watch": "deno run --watch --allow-run --allow-read --allow-write scripts/build-npm.ts"
   }
 }
