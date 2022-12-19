@@ -9,8 +9,11 @@ const cargoTomlObj = parse(cargoTomlString);
 
 const PartialCargoTomlSchema = z.object({
   package: z.object({
-    // zod schema for validating semVer strings
-    version: z.string().regex(/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/),
+    // zod schema for validating semVer strings (with pre-release like -beta.1 and build metadata like +build.20221219)
+    // Exmaple: 1.2.3-beta.1+build.20221219
+    version: z.string().regex(
+      /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$/,
+    ),
   }),
 });
 
