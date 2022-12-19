@@ -60,7 +60,7 @@ jobs:
       - uses: actions/setup-node@v3
         with:
           node-version: 18
-        # runs a cargo 
+        # runs a cargo release build in the current matrix
       - uses: actions-rs/cargo@v1
         with:
           command: build
