@@ -1,0 +1,93 @@
+name: Manual Build & Release
+
+
+# GITHUB Docs for workflow_dispatch: https://docs.github.com/en/enterprise-cloud@latest/actions/using-workflows/workflow-syntax-for-github-actions#onworkflow_dispatchinputs
+on:
+  workflow_call:
+    inputs:
+      targetPackageSuffix:
+        description: The suffix to append to the version for the target npm package. Can also be empty (but beware possible collisions with the main automatic release workflow!).
+        default: "-cicd.1"
+        required: true
+      publishToNpm:
+        description: If true, publishes a new package with that suffix to npm!
+        default: false,
+        required: false
+        type: boolean
+      updateRepo:
+        description: If true, pushes all changes back to source repo!
+        default: true,
+        required: false
+        type: boolean
+  workflow_dispatch:
+    inputs:
+      targetPackageSuffix:
+        description: The suffix to append to the version for the target npm package. Can also be empty (but beware possible collisions with the main automatic release workflow!).
+        default: "-cicd.1"
+        required: true
+      publishToNpm:
+        description: If true, publishes a new package with that suffix to npm!
+        default: false,
+        required: false
+        type: boolean
+      updateRepo:
+        description: If true, pushes all changes back to source repo!
+        default: false,
+        required: false
+        type: boolean
+
+concurrency:
+  group: deploy-release-${{ github.ref }}-1
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+          - os: windows-latest
+          - os: macos-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: denoland/setup-deno@v1.0.0
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          # components: rustfmt, clippy
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 18
+        # runs a cargo 
+      - uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --release --all-features
+      - run: deno task pack
+      - run: npm install
+        working-directory: dist
+
+      - run: ./bin/run.js --help
+        working-directory: dist
+
+      - name: publish new version
+        if: github.event.inputs.publishToNpm
+        working-directory: dist
+        run: |
+          echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_AUTH_TOKEN }}" > .npmrc
+          npm publish
+
+      - name: Push changes back
+        if: github.event.inputs.updateRepo
+        uses: ad-m/github-push-action@v0.6.0
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          branch: ${{ github.ref }}
+
+      - uses: actions-ecosystem/action-push-tag@v1
+        if: github.event.inputs.updateRepo
+        with:
+          tag: "${{ github.event.inputs.denoVersion }}${{ github.event.inputs.targetPackageSuffix }}"
+          message: "${{ github.event.inputs.denoVersion }}${{ github.event.inputs.targetPackageSuffix }}"
