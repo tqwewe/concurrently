@@ -1,11 +1,11 @@
-on:
-  workflow_dispatch:
+on: ["workflow_dispatch"]
+name: Manual build rust
+concurrency:
+  group: build-rust-${{ github.ref }}-1
+  cancel-in-progress: true
 
 jobs: 
-  name: Manual build rust
-  concurrency:
-    group: build-rust-${{ github.ref }}-1
-    cancel-in-progress: true
+ 
   build: 
     runs-on: ${{ matrix.os }}
     strategy:
