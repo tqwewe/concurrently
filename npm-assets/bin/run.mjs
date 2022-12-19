@@ -2,7 +2,7 @@
 
 import fs from "node:fs";
 import { join } from "node:path";
-import { executables } from "./executables";
+import { executables } from "./executables.mjs";
 import child_process from "node:child_process";
 import { fileURLToPath } from "node:url";
 
