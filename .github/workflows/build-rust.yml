@@ -1,0 +1,33 @@
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: build-rust-${{ github.ref }}-1
+  cancel-in-progress: true
+
+jobs: 
+  build: 
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            exe: concurrently
+          - os: macos-latest
+            exe: concurrently
+          - os: windows-latest
+            exe: concurrently.exe
+  steps:
+    - uses: actions/checkout@v3
+    - uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+        toolchain: stable
+        # components: rustfmt, clippy
+      # runs a cargo release build in the current matrix
+    - uses: actions-rs/cargo@v1
+      with:
+        command: build
+        args: --release --all-features
+    - run: ./target/release/${{matrix.exe}}
+
