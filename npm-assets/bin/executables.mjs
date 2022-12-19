@@ -10,7 +10,7 @@ export const executables = new Map([
         // the path to the executable, relative to the root of the package
         executablePath: "windows/concurrently.exe",
     }], 
-    ['dawin-x64', {
+    ['darwin-x64', {
         executablePath: "darwin/concurrently",
     }],
     // TODO: Compile on Mac Mini M1
