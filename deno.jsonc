@@ -6,7 +6,8 @@
     "cargo-build": "cargo build --release",
     "build-win": "cross build --target x86_64-pc-windows-gnu --release", 
     "build-mac": "cargo build --release",
+    "watch": "deno run --watch --allow-run --allow-read --allow-write scripts/build-npm.ts",
     "pack": "deno run --allow-run --allow-read --allow-write scripts/build-npm.ts",
-    "watch": "deno run --watch --allow-run --allow-read --allow-write scripts/build-npm.ts"
+    "deploy": "npm publish --access public dist"
   }
 }

@@ -1,6 +1,6 @@
 [package]
   name = "concurrently"
-  version = "0.2.0"
+  version = "0.2.0-prerelease.1"
   authors = [
     "Ari Seyhun <ariseyhun@live.com.au>",
     "Benjamin Jesuiter <bjesuiter@gmail.com>",
