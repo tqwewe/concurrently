@@ -5,13 +5,13 @@
  * key of map: `${platform}-${arch}` for faster lookup
  */
 
-export const executables = new Set([
+export const executables = new Map([
     ['win32-x64', {
         // the path to the executable, relative to the root of the package
-        executable: "windows/concurrently.exe",
+        executablePath: "windows/concurrently.exe",
     }], 
     ['dawin-x64', {
-        executable: "darwin/concurrently",
+        executablePath: "darwin/concurrently",
     }],
     // TODO: Compile on Mac Mini M1
     // ['darwin-arm', {
