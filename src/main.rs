@@ -157,27 +157,29 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     while let Some(result) = workers.next().await {
         if let Ok((status, mut task)) = result {
-            if task.retries > 3 && !status.success() {
-                error(format!(
-                    "task {} exited with non-success code too many times, exiting.",
-                    task.name
-                ));
-                return Ok(());
-            }
-            let sleep_secs = (task.retries + 1) as u64;
-            warn(format!(
-                "task exited with non-success code, retrying again in {} seconds...",
-                sleep_secs
-            ));
-            time::sleep(Duration::from_secs(sleep_secs)).await;
-            task.retries += 1;
-            workers.push(Box::pin(
-                async move {
-                    let status = task.run().await?;
-                    Result::<_, io::Error>::Ok((status, task))
+            if !status.success() {
+                if task.retries > 3 {
+                    error(format!(
+                        "task {} exited with non-success code too many times, exiting.",
+                        task.name
+                    ));
+                    return Ok(());
                 }
-                .boxed(),
-            ));
+                let sleep_secs = (task.retries + 1) as u64;
+                warn(format!(
+                    "task exited with non-success code, retrying again in {} seconds...",
+                    sleep_secs
+                ));
+                time::sleep(Duration::from_secs(sleep_secs)).await;
+                task.retries += 1;
+                workers.push(Box::pin(
+                    async move {
+                        let status = task.run().await?;
+                        Result::<_, io::Error>::Ok((status, task))
+                    }
+                    .boxed(),
+                ));
+            }
         }
     }
 
