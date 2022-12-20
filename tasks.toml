@@ -1,0 +1,30 @@
+# This is a demo tasks file intended for development of this concurrently package
+
+# [tasks.endless]
+#     command = "while true ; do echo \"Hello from Endless Demo- $(date)\" ; sleep 1 ; done"
+#     retries = 3                                                                       # Retry 3 times before exiting
+#     delay   = 1000         
+
+# [tasks.tentimes]
+#     command = "for i in $(seq 1 10) ; do echo \"Hello from TenTimes Demo - $(date)\" ; sleep 1 ; done"
+#     retries = 3                                                                       # Retry 3 times before exiting
+#     delay   = 1000                                                                    # Wait 1 second before running
+
+[tasks.demo1]
+    command    = "for i in $(seq 1 5) ; do echo \"Hello from Demo 1 - $(date)\" ; sleep 1 ; done; exit"
+    retries    = 0
+    maxRetries = 0                                                                                      # Retry 3 times before exiting
+    delay      = 1000                                                                                   # Wait 1 second before running
+
+[tasks.demo2]
+    command    = "for i in $(seq 1 5) ; do echo \"Hello from Demo 2 - $(date)\" ; sleep 1 ; done; exit"
+    retries    = 0
+    maxRetries = 0                                                                                      # Retry 3 times before exiting
+    delay      = 2000                                                                                   # Wait 2 seconds before running
+
+[tasks.demo3]
+    # Run a custom command
+    command    = "for i in $(seq 1 5) ; do echo \"Hello from Demo 3 - $(date)\" ; sleep 1 ; done; exit"
+    retries    = 0
+    maxRetries = 0                                                                                      # Retry 3 times before exiting
+    delay      = 3000                                                                                   # Wait 3 seconds before running

@@ -1,33 +1,36 @@
 [package]
-name = "concurrently"
-version = "0.2.0"
-authors = ["Ari Seyhun <ariseyhun@live.com.au>"]
-edition = "2021"
-description = "Run multiple processes concurrently."
-license = "MIT OR Apache-2.0"
-repository = "https://github.com/tqwewe/concurrently"
-categories = ["command-line-utilities"]
-keywords = ["tasks", "concurrently", "cli", "parallel"]
+  name = "concurrently"
+  version = "0.2.0-prerelease.1"
+  authors = [
+    "Ari Seyhun <ariseyhun@live.com.au>",
+    "Benjamin Jesuiter <bjesuiter@gmail.com>",
+  ]
+  edition = "2021"
+  description = "Run multiple processes concurrently."
+  license = "MIT OR Apache-2.0"
+  repository = "https://github.com/bjesuiter/concurrently-rust"
+  categories = ["command-line-utilities"]
+  keywords = ["tasks", "concurrently", "cli", "parallel"]
 
 [[bin]]
-name = "concurrently"
-path = "src/main.rs"
+  name = "concurrently"
+  path = "src/main.rs"
 
 [dependencies]
-async-trait = "0.1"
-cargo_toml = "0.10"
-clap = { version = "3.0.0-rc.4", features = ["derive"] }
-colored = "2.0"
-dotenv = "0.15"
-futures = "0.3"
-serde = { version = "1.0", features = ["derive"] }
-tokio = { version = "1.14", features = [
-  "fs",
-  "io-util",
-  "macros",
-  "rt",
-  "rt-multi-thread",
-  "time",
-  "process",
-] }
-toml = "0.5"
+  async-trait = "0.1"
+  cargo_toml = "0.10"
+  clap = { version = "3.0.0-rc.4", features = ["derive"] }
+  colored = "2.0"
+  dotenv = "0.15"
+  futures = "0.3"
+  serde = { version = "1.0", features = ["derive"] }
+  tokio = { version = "1.14", features = [
+    "fs",
+    "io-util",
+    "macros",
+    "rt",
+    "rt-multi-thread",
+    "time",
+    "process",
+  ] }
+  toml = "0.5"
