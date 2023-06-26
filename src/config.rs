@@ -14,7 +14,7 @@ pub struct TaskOptions {
     #[serde(flatten)]
     pub task_options: TaskTypeOptions,
     #[serde(default)]
-    pub prepare: Option<String>,
+    pub prepare: Option<Command>,
     // pub env_file: Option<String>, // Allow hard-coded env, or env file
     #[serde(default, with = "humantime_serde")]
     pub delay: Option<Duration>,

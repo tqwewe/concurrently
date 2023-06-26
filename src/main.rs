@@ -12,6 +12,7 @@ use tokio::{fs, io, time};
 use crate::{log::warn, task::Task};
 
 mod config;
+mod fake_tty;
 mod log;
 mod task;
 
@@ -39,7 +40,14 @@ struct Args {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    let is_fake_tty = std::env::args().any(|arg| arg == "--fake-tty");
+    if is_fake_tty {
+        crate::fake_tty::run();
+        return Ok(());
+    }
+
     let args = Args::parse();
+
     let selected_tasks: Vec<_> = args
         .tasks
         .into_iter()

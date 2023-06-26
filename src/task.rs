@@ -1,4 +1,6 @@
 use std::{
+    env,
+    path::PathBuf,
     process::{ExitStatus, Stdio},
     time::Duration,
 };
@@ -12,19 +14,20 @@ use tokio::{
 };
 
 use crate::{
-    config::{CargoTaskOptions, ShellTaskOptions, TaskOptions, TaskTypeOptions},
+    config::{self, CargoTaskOptions, ShellTaskOptions, TaskOptions, TaskTypeOptions},
     log::warn,
 };
 
 #[derive(Clone)]
 pub struct Task {
     pub name: String,
-    prepare: Option<String>,
+    prepare: Option<config::Command>,
     pub retries: usize,
     pub max_retries: usize,
     delay: Option<Duration>,
     pub tag: String,
     opts: TaskTypeOptions,
+    current_exe: PathBuf,
 }
 
 impl Task {
@@ -40,6 +43,9 @@ impl Task {
             }
         }
 
+        let current_exe =
+            env::current_exe().expect("could not get path to currently running executable");
+
         Task {
             name,
             prepare: opts.prepare,
@@ -48,6 +54,7 @@ impl Task {
             delay: opts.delay,
             tag,
             opts: opts.task_options,
+            current_exe,
         }
     }
 
@@ -56,14 +63,17 @@ impl Task {
             TaskTypeOptions::Shell(_) => None,
             TaskTypeOptions::Cargo(CargoTaskOptions { release }) => {
                 // Build the project
-                let mut cmd = Command::new("cargo");
-                cmd.arg("build")
+                let mut cmd = Command::new(&self.current_exe);
+                cmd.arg("--fake-tty")
+                    .arg("cargo")
+                    .arg("build")
                     .arg("-p")
                     .arg(&self.name)
                     .arg("--color=always");
                 if *release {
                     cmd.arg("--release");
                 }
+                cmd.envs(env::vars());
 
                 let status = match exec(cmd, &self.tag, Some(pb.clone())).await {
                     Ok(status) => status,
@@ -83,7 +93,8 @@ impl Task {
         if let Some(prepare) = &self.prepare {
             let mut cmd = Command::new("sh");
             cmd.arg("-c");
-            cmd.arg(prepare.replace('\n', " "));
+            cmd.arg(prepare.to_string());
+            cmd.envs(env::vars());
 
             let status = match exec(cmd, &self.tag, Some(pb)).await {
                 Ok(status) => status,
@@ -126,7 +137,7 @@ impl Task {
             time::sleep(delay).await;
         }
 
-        let cmd = match &self.opts {
+        let mut cmd = match &self.opts {
             TaskTypeOptions::Shell(ShellTaskOptions { command }) => {
                 let mut cmd = Command::new("sh");
                 cmd.arg("-c");
@@ -139,6 +150,7 @@ impl Task {
                 &self.name
             )),
         };
+        cmd.envs(env::vars());
 
         let status = exec(cmd, &self.tag, None).await?;
 
