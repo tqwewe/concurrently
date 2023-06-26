@@ -4,95 +4,105 @@ use std::{
 };
 
 use colored::{Color, Colorize};
+use indicatif::ProgressBar;
 use tokio::{
     io::{self, AsyncBufReadExt, BufReader},
     process::Command,
+    time,
 };
 
-#[derive(Clone)]
-pub enum TaskType {
-    CargoWorkspaceMember(String, bool),
-    Command(String),
-}
+use crate::{
+    config::{CargoTaskOptions, ShellTaskOptions, TaskOptions, TaskTypeOptions},
+    log::warn,
+};
 
 #[derive(Clone)]
 pub struct Task {
     pub name: String,
-    pub task_type: TaskType,
-    pub color: Color,
-    pub prepare: Option<String>,
-    pub tag_padding: usize,
+    prepare: Option<String>,
     pub retries: usize,
     pub max_retries: usize,
-    pub delay: Option<Duration>,
+    delay: Option<Duration>,
+    pub tag: String,
+    opts: TaskTypeOptions,
 }
 
 impl Task {
-    fn tag(&self) -> String {
-        let mut tag = " ".repeat(self.tag_padding);
-        tag.push_str(
-            &format!(" {} ", self.name.to_uppercase())
-                .bold()
-                .on_color(self.color)
-                .truecolor(0, 0, 0)
-                .to_string(),
-        );
-        tag.push_str("  ");
-        tag
+    pub fn from_options(name: String, color: Color, tag_padding: usize, opts: TaskOptions) -> Self {
+        let mut tag = name.bold().color(color).to_string();
+        tag.push_str(&" ".repeat(tag_padding + 2));
+        tag.push_str(&"|".bold().color(color).to_string());
+        tag.push_str(" ");
+
+        if let TaskTypeOptions::Shell(ShellTaskOptions { command }) = &opts.task_options {
+            if command.is_empty() {
+                warn(format!("task {name} has no command configured"));
+            }
+        }
+
+        Task {
+            name,
+            prepare: opts.prepare,
+            retries: 0,
+            max_retries: opts.retries,
+            delay: opts.delay,
+            tag,
+            opts: opts.task_options,
+        }
     }
 
-    pub async fn prepare(&self) -> Option<io::Result<ExitStatus>> {
-        let cmd = match &self.task_type {
-            TaskType::CargoWorkspaceMember(name, release) => {
+    pub async fn prepare(&self, pb: ProgressBar) -> Option<io::Result<ExitStatus>> {
+        let result = match &self.opts {
+            TaskTypeOptions::Shell(_) => None,
+            TaskTypeOptions::Cargo(CargoTaskOptions { release }) => {
+                // Build the project
                 let mut cmd = Command::new("cargo");
-
-                cmd.arg("build").arg("--package").arg(name).arg("--quiet");
-
+                cmd.arg("build")
+                    .arg("-p")
+                    .arg(&self.name)
+                    .arg("--color=always");
                 if *release {
                     cmd.arg("--release");
                 }
 
-                cmd
+                let status = match exec(cmd, &self.tag, Some(pb.clone())).await {
+                    Ok(status) => status,
+                    Err(err) => return Some(Err(err)),
+                };
+
+                if status.success() {
+                    // println!("{} {}", self.tag, "successfully built".bold().white());
+                } else {
+                    // println!("{} {}", self.tag, "failed to build".bold().red());
+                    return Some(Ok(status));
+                }
+                Some(Ok(status))
             }
-            TaskType::Command(_) => return None,
         };
-
-        let tag = self.tag();
-        let status = match exec(cmd, &tag).await {
-            Ok(status) => status,
-            Err(err) => return Some(Err(err)),
-        };
-
-        if status.success() {
-            println!("{} {}", tag, "successfully built".bold().white());
-        } else {
-            println!("{} {}", tag, "failed to build".bold().red());
-        }
 
         if let Some(prepare) = &self.prepare {
             let mut cmd = Command::new("sh");
             cmd.arg("-c");
             cmd.arg(prepare.replace('\n', " "));
 
-            let tag = self.tag();
-            let status = match exec(cmd, &tag).await {
+            let status = match exec(cmd, &self.tag, Some(pb)).await {
                 Ok(status) => status,
                 Err(err) => return Some(Err(err)),
             };
 
             if status.success() {
-                println!(
-                    "{} {}",
-                    tag,
-                    format!("process exited with status code {}", status)
-                        .bold()
-                        .white()
-                );
+                // println!(
+                //     "{} {}",
+                //     self.tag,
+                //     format!("process exited with status code {status}")
+                //         .bold()
+                //         .white()
+                // );
             } else {
                 println!(
                     "{} {}",
-                    tag,
-                    format!("process exited with status code {}", status)
+                    self.tag,
+                    format!("process exited with status code {status}")
                         .bold()
                         .red()
                 );
@@ -100,41 +110,51 @@ impl Task {
 
             Some(Ok(status))
         } else {
-            Some(Ok(status))
+            result
         }
     }
 
     pub async fn run(&self) -> io::Result<ExitStatus> {
-        let cmd = match &self.task_type {
-            TaskType::CargoWorkspaceMember(name, release) => Command::new(format!(
-                "./target/{}/{}",
-                if *release { "release" } else { "debug" },
-                name
-            )),
-            TaskType::Command(c) => {
+        if let Some(delay) = self.delay {
+            println!(
+                "{} {}",
+                self.tag,
+                format!("waiting {:.2}s", delay.as_secs_f32())
+                    .bold()
+                    .white()
+            );
+            time::sleep(delay).await;
+        }
+
+        let cmd = match &self.opts {
+            TaskTypeOptions::Shell(ShellTaskOptions { command }) => {
                 let mut cmd = Command::new("sh");
                 cmd.arg("-c");
-                cmd.arg(c.replace('\n', " "));
+                cmd.arg(command.to_string());
                 cmd
             }
+            TaskTypeOptions::Cargo(CargoTaskOptions { release }) => Command::new(format!(
+                "./target/{}/{}",
+                if *release { "release" } else { "debug" },
+                &self.name
+            )),
         };
 
-        let tag = self.tag();
-        let status = exec(cmd, &tag).await?;
+        let status = exec(cmd, &self.tag, None).await?;
 
         if status.success() {
             println!(
                 "{} {}",
-                tag,
-                format!("process exited with status code {}", status)
+                self.tag,
+                format!("process exited with status code {status}")
                     .bold()
                     .white()
             );
         } else {
             println!(
                 "{} {}",
-                tag,
-                format!("process exited with status code {}", status)
+                self.tag,
+                format!("process exited with status code {status}")
                     .bold()
                     .red()
             );
@@ -144,7 +164,7 @@ impl Task {
     }
 }
 
-async fn exec(mut cmd: Command, tag: &str) -> io::Result<ExitStatus> {
+async fn exec(mut cmd: Command, tag: &str, pb: Option<ProgressBar>) -> io::Result<ExitStatus> {
     cmd.stdout(Stdio::piped());
     cmd.stderr(Stdio::piped());
 
@@ -160,30 +180,67 @@ async fn exec(mut cmd: Command, tag: &str) -> io::Result<ExitStatus> {
         .expect("child did not have a handle to stderr");
 
     let mut stdout_reader = BufReader::new(stdout).lines();
-    let mut stderr_reader = BufReader::new(stderr).lines();
+    let mut stderr_reader = BufReader::with_capacity(1024, stderr).lines();
 
-    let tag_cloned = tag.to_string();
-    tokio::spawn(async move {
-        while let Some(line) = stdout_reader.next_line().await.unwrap() {
-            if !line.trim().is_empty() {
-                println!("{} {}", tag_cloned, line);
+    let stdout_task = {
+        let tag = tag.to_string();
+        let pb = pb.clone();
+        tokio::spawn(async move {
+            while let Some(line) = stdout_reader.next_line().await.unwrap() {
+                if !line.trim().is_empty() {
+                    if let Some(pb) = &pb {
+                        pb.set_message(line);
+                    } else {
+                        println!("{tag} {}", line);
+                    }
+                }
             }
-        }
-    });
+        })
+    };
 
-    let tag_cloned = tag.to_string();
-    tokio::spawn(async move {
-        while let Some(line) = stderr_reader.next_line().await.unwrap() {
-            if !line.trim().is_empty() {
-                println!("{} {}", tag_cloned, line.red());
+    let stderr_task = {
+        let tag = tag.to_string();
+        let pb = pb.clone();
+        tokio::spawn(async move {
+            let mut last_ten_lines = Vec::with_capacity(20);
+            while let Some(line) = stderr_reader.next_line().await.unwrap() {
+                if !line.trim().is_empty() {
+                    if let Some(pb) = &pb {
+                        pb.set_message(line.clone());
+                    } else {
+                        println!("{tag} {}", line.red());
+                    }
+                    if last_ten_lines.len() >= 20 {
+                        last_ten_lines.remove(0);
+                    }
+                    last_ten_lines.push(line);
+                }
             }
-        }
-    });
+            last_ten_lines
+        })
+    };
 
     let status = child
         .wait()
         .await
         .expect("child process encountered an error");
+
+    let _ = stdout_task.await.unwrap();
+    let last_ten_lines = stderr_task.await.unwrap();
+
+    if !status.success() {
+        if let Some(pb) = pb {
+            pb.println(
+                "showing last 20 lines of stderr..."
+                    .bold()
+                    .white()
+                    .to_string(),
+            );
+            for line in last_ten_lines {
+                pb.println(line);
+            }
+        }
+    }
 
     Ok(status)
 }

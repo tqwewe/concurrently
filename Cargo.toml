@@ -14,20 +14,15 @@ name = "concurrently"
 path = "src/main.rs"
 
 [dependencies]
+anyhow = "1.0"
 async-trait = "0.1"
-cargo_toml = "0.10"
-clap = { version = "3.0.0-rc.4", features = ["derive"] }
+cargo_toml = "0.15"
+clap = { version = "4.3", features = ["derive"] }
 colored = "2.0"
 dotenv = "0.15"
 futures = "0.3"
+humantime-serde = "1.1.1"
+indicatif = "0.17.5"
 serde = { version = "1.0", features = ["derive"] }
-tokio = { version = "1.14", features = [
-  "fs",
-  "io-util",
-  "macros",
-  "rt",
-  "rt-multi-thread",
-  "time",
-  "process",
-] }
-toml = "0.5"
+tokio = { version = "1.28", features = ["full"] }
+toml = "0.7"

@@ -1,6 +1,6 @@
 # Concurrently
 
-Run multiple processes concurrently.
+Run multiple processes concurrently, with support for cargo.
 
 _Written in Rust with ☕_
 
@@ -15,29 +15,21 @@ $ cargo install concurrently
 Create a `tasks.toml` file in the root of your project:
 
 ```toml
-[tasks.api]
-cargo_workspace_member = true # Run the api cargo package
-retries = 3 # Retry 3 times before exiting
-delay = 1000 # Wait 1 second before running
+[tasks.client]
+workspace = true  # Run the client cargo workspace member
+retries = 3       # Retry 3 times before exiting
+delay = "1s"      # Wait 1 second before running
 
-[tasks.domain]
-cargo_workspace_member = true # Run the api cargo package
-release = true # Run in --release mode
+[tasks.server]
+workspace = true  # Run the server cargo workspace member
+release = true    # Run in --release mode
 
-[tasks.relay]
-# Run a custom command
+[tasks.db]
 command = [
   "docker",
   "run",
-  "--name=auth-outbox-relay",
-  "--net=host",
-  "--init",
-  "--rm",
-  "acidic9/outbox-relay:latest",
-  "./outbox-relay -d $DATABASE_URL -r $REDPANDA_HOST",
+  "postgres",
 ]
-retries = 3 # Retry 3 times before exiting
-delay = 1000 # Wait 1 second before running
 ```
 
 Now you can simply run concurrently:
@@ -46,6 +38,33 @@ Now you can simply run concurrently:
 $ cargo concurrently
 ```
 
-<p align="center">
-  <img src="https://raw.githubusercontent.com/Acidic9/concurrently/main/terminal-screenshot.png">
-</p>
+## Config
+
+**Common**
+
+These configs are optional, and can be used with all tasks.
+
+| Config  | Type   |                                                                                  |
+|---------|--------|----------------------------------------------------------------------------------|
+| prepare | String | Runs a command before starting the task.                                         |
+| delay   | String | Waits before starting the task. This can be in the format of "1s", "100ms", etc. |
+| retries | Number | Retries this task before exiting all other tasks.                                |
+
+**Shell Task**
+
+Shell task runs a shell command.
+
+| Config  | Type            |                               |
+|---------|-----------------|-------------------------------|
+| command | String or Array | Runs the command as the task. |
+
+**Cargo Task**
+
+Cargo tasks are built using cargo with `cargo build -p <name>` where `name` is the name of the task.
+
+`cargo` must be set to `true` for a task to be a cargo task.
+
+| Config  | Type |                                                                                        |
+|---------|------|----------------------------------------------------------------------------------------|
+| cargo   | Bool | If set to true, treats this task as a cargo crate. The crate will be built on startup. |
+| release | Bool | Builds for release.                                                                    |

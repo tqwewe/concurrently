@@ -1,11 +1,12 @@
-use std::{process, time::Duration};
+use std::{process, sync::Arc, time::Duration};
 
+use anyhow::Context;
 use clap::Parser;
 use colored::Color;
 use config::Config;
 use futures::{stream::FuturesUnordered, FutureExt, StreamExt};
+use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use log::{error, info};
-use task::TaskType;
 use tokio::{fs, io, time};
 
 use crate::{log::warn, task::Task};
@@ -16,10 +17,10 @@ mod task;
 
 const COLORS: [Color; 10] = [
     Color::Green,
+    Color::Yellow,
     Color::Blue,
     Color::Magenta,
     Color::Cyan,
-    Color::Yellow,
     Color::BrightGreen,
     Color::BrightBlue,
     Color::BrightMagenta,
@@ -37,7 +38,7 @@ struct Args {
 }
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() -> anyhow::Result<()> {
     let args = Args::parse();
     let selected_tasks: Vec<_> = args
         .tasks
@@ -50,7 +51,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         })
         .collect();
 
-    let tasks_file = fs::read_to_string("./tasks.toml").await?;
+    let tasks_file = fs::read_to_string("./tasks.toml")
+        .await
+        .context("no tasks.toml found")?;
     let config: Config = toml::from_str(&tasks_file)?;
 
     if let Some(env) = config.env {
@@ -64,7 +67,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    let tasks: Vec<_> = config
+    let mut tasks: Vec<_> = config
         .tasks
         .into_iter()
         .filter(|task| {
@@ -77,17 +80,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         })
         .collect();
-    let longest_name = tasks.iter().fold(
-        0,
-        |acc, (name, _)| {
-            if name.len() > acc {
-                name.len()
-            } else {
-                acc
-            }
-        },
-    );
+    tasks.sort_by(|(a, _), (b, _)| a.cmp(b));
+    let longest_name = tasks.iter().map(|(name, _)| name.len()).max().unwrap_or(0);
     let mut next_color: usize = 0;
+
     let tasks: Vec<_> = tasks
         .into_iter()
         .filter_map(|(name, opts)| {
@@ -97,39 +93,79 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 next_color = 0;
             }
             let tag_padding = longest_name - name.len();
-            let task_type = if let Some(cmd) = opts.command {
-                if cmd.is_empty() {
-                    warn(format!("task '{}' has an empty command, ignoring.", name));
-                    return None;
-                } else {
-                    TaskType::Command(cmd)
-                }
-            } else if opts.cargo_workspace_member {
-                TaskType::CargoWorkspaceMember(name.clone(), opts.release)
-            } else {
-                return None;
-            };
-            Some(Task {
-                name,
-                task_type,
-                color,
-                prepare: opts.prepare,
-                tag_padding,
-                retries: 0,
-                max_retries: opts.retries,
-                delay: opts.delay.map(Duration::from_millis),
-            })
+            Some(Task::from_options(name, color, tag_padding, opts))
         })
         .collect();
 
     if tasks.is_empty() {
         info("nothing to run");
+        return Ok(());
     }
 
-    info("preparing tasks...");
+    // info("preparing tasks...");
+
+    let m = MultiProgress::new();
+    m.set_move_cursor(true);
+    let sty =
+        ProgressStyle::with_template("{prefix} {spinner:.bold/white} {wide_msg:.bold/white/!}")
+            .unwrap();
+
+    let spinners = Arc::new(
+        tasks
+            .iter()
+            .map(|task| {
+                let spinner = m
+                    .add(ProgressBar::new_spinner())
+                    .with_prefix(task.tag.clone());
+                spinner.set_style(sty.clone());
+                spinner
+            })
+            .collect::<Vec<_>>(),
+    );
+
+    let ticker = {
+        let spinners = Arc::clone(&spinners);
+        tokio::spawn(async move {
+            loop {
+                for spinner in spinners.iter() {
+                    spinner.tick();
+                }
+                time::sleep(time::Duration::from_millis(100)).await;
+            }
+        })
+    };
+
     let mut workers = FuturesUnordered::new();
-    for task in &tasks {
-        workers.push(async move { task.prepare().await });
+    for (i, task) in tasks.iter().enumerate() {
+        let spinner = spinners[i].clone();
+        workers.push(async move {
+            let result = task.prepare(spinner.clone()).await;
+            match &result {
+                Some(Ok(status)) => {
+                    if status.success() {
+                        spinner.finish_with_message("done");
+                    } else {
+                        match status.code() {
+                            Some(code) => {
+                                spinner
+                                    .finish_with_message(format!("failed with exit code {code}",));
+                            }
+                            None => {
+                                spinner.finish_with_message("failed");
+                            }
+                        }
+                    }
+                }
+                Some(Err(err)) => {
+                    spinner.println(err.to_string());
+                    spinner.finish();
+                }
+                None => {
+                    spinner.finish_and_clear();
+                }
+            }
+            result
+        });
     }
     while let Some(result) = workers.next().await {
         if let Some(result) = result {
@@ -140,15 +176,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    info("running tasks...");
+    ticker.abort();
+    let _ = m.clear();
+
+    // info("running tasks...");
     let mut workers = FuturesUnordered::new();
     for task in &tasks {
         let task = task.clone();
         workers.push(Box::pin(
             async move {
-                if let Some(delay) = task.delay {
-                    time::sleep(delay).await;
-                }
                 let status = task.run().await?;
                 Result::<_, io::Error>::Ok((status, task))
             }
@@ -158,7 +194,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     while let Some(result) = workers.next().await {
         if let Ok((status, mut task)) = result {
             if !status.success() {
-                if task.retries > 3 {
+                if task.retries > task.max_retries {
                     error(format!(
                         "task {} exited with non-success code too many times, exiting.",
                         task.name
