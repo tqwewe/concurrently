@@ -91,7 +91,9 @@ impl Task {
         };
 
         if let Some(prepare) = &self.prepare {
-            let mut cmd = Command::new("sh");
+            let mut cmd = Command::new(&self.current_exe);
+            cmd.arg("--fake-tty");
+            cmd.arg("sh");
             cmd.arg("-c");
             cmd.arg(prepare.to_string());
             cmd.envs(env::vars());
