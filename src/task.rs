@@ -63,9 +63,8 @@ impl Task {
             TaskTypeOptions::Shell(_) => None,
             TaskTypeOptions::Cargo(CargoTaskOptions { release }) => {
                 // Build the project
-                let mut cmd = Command::new(&self.current_exe);
-                cmd.arg("--fake-tty")
-                    .arg("cargo")
+                let mut cmd = self.new_command();
+                cmd.arg("cargo")
                     .arg("build")
                     .arg("-p")
                     .arg(&self.name)
@@ -73,17 +72,13 @@ impl Task {
                 if *release {
                     cmd.arg("--release");
                 }
-                cmd.envs(env::vars());
 
                 let status = match exec(cmd, &self.tag, Some(pb.clone())).await {
                     Ok(status) => status,
                     Err(err) => return Some(Err(err)),
                 };
 
-                if status.success() {
-                    // println!("{} {}", self.tag, "successfully built".bold().white());
-                } else {
-                    // println!("{} {}", self.tag, "failed to build".bold().red());
+                if !status.success() {
                     return Some(Ok(status));
                 }
                 Some(Ok(status))
@@ -91,27 +86,15 @@ impl Task {
         };
 
         if let Some(prepare) = &self.prepare {
-            let mut cmd = Command::new(&self.current_exe);
-            cmd.arg("--fake-tty");
-            cmd.arg("sh");
-            cmd.arg("-c");
-            cmd.arg(prepare.to_string());
-            cmd.envs(env::vars());
+            let mut cmd = self.new_command();
+            cmd.arg("sh").arg("-c").arg(prepare.to_string());
 
             let status = match exec(cmd, &self.tag, Some(pb)).await {
                 Ok(status) => status,
                 Err(err) => return Some(Err(err)),
             };
 
-            if status.success() {
-                // println!(
-                //     "{} {}",
-                //     self.tag,
-                //     format!("process exited with status code {status}")
-                //         .bold()
-                //         .white()
-                // );
-            } else {
+            if !status.success() {
                 println!(
                     "{} {}",
                     self.tag,
@@ -128,31 +111,24 @@ impl Task {
     }
 
     pub async fn run(&self) -> io::Result<ExitStatus> {
-        if let Some(delay) = self.delay {
-            println!(
-                "{} {}",
-                self.tag,
-                format!("waiting {:.2}s", delay.as_secs_f32())
-                    .bold()
-                    .white()
-            );
-            time::sleep(delay).await;
-        }
+        self.sleep().await;
 
-        let mut cmd = match &self.opts {
+        let cmd = match &self.opts {
             TaskTypeOptions::Shell(ShellTaskOptions { command }) => {
-                let mut cmd = Command::new("sh");
-                cmd.arg("-c");
-                cmd.arg(command.to_string());
+                let mut cmd = self.new_command();
+                cmd.arg("sh").arg("-c").arg(command.to_string());
                 cmd
             }
-            TaskTypeOptions::Cargo(CargoTaskOptions { release }) => Command::new(format!(
-                "./target/{}/{}",
-                if *release { "release" } else { "debug" },
-                &self.name
-            )),
+            TaskTypeOptions::Cargo(CargoTaskOptions { release }) => {
+                let mut cmd = self.new_command();
+                cmd.arg(format!(
+                    "./target/{}/{}",
+                    if *release { "release" } else { "debug" },
+                    &self.name
+                ));
+                cmd
+            }
         };
-        cmd.envs(env::vars());
 
         let status = exec(cmd, &self.tag, None).await?;
 
@@ -176,6 +152,26 @@ impl Task {
 
         Ok(status)
     }
+
+    fn new_command(&self) -> Command {
+        let mut cmd = Command::new(&self.current_exe);
+        cmd.arg("--fake-tty");
+        cmd.envs(env::vars());
+        cmd
+    }
+
+    async fn sleep(&self) {
+        if let Some(delay) = self.delay {
+            println!(
+                "{} {}",
+                self.tag,
+                format!("waiting {:.2}s", delay.as_secs_f32())
+                    .bold()
+                    .white()
+            );
+            time::sleep(delay).await;
+        }
+    }
 }
 
 async fn exec(mut cmd: Command, tag: &str, pb: Option<ProgressBar>) -> io::Result<ExitStatus> {
@@ -194,7 +190,7 @@ async fn exec(mut cmd: Command, tag: &str, pb: Option<ProgressBar>) -> io::Resul
         .expect("child did not have a handle to stderr");
 
     let mut stdout_reader = BufReader::new(stdout).lines();
-    let mut stderr_reader = BufReader::with_capacity(1024, stderr).lines();
+    let mut stderr_reader = BufReader::new(stderr).lines();
 
     let stdout_task = {
         let tag = tag.to_string();
@@ -202,8 +198,10 @@ async fn exec(mut cmd: Command, tag: &str, pb: Option<ProgressBar>) -> io::Resul
         tokio::spawn(async move {
             while let Some(line) = stdout_reader.next_line().await.unwrap() {
                 if !line.trim().is_empty() {
+                    let parts = line.split('\r');
+                    let line = parts.last().unwrap_or(&line);
                     if let Some(pb) = &pb {
-                        pb.set_message(line);
+                        pb.set_message(line.to_string());
                     } else {
                         println!("{tag} {}", line);
                     }
@@ -219,15 +217,17 @@ async fn exec(mut cmd: Command, tag: &str, pb: Option<ProgressBar>) -> io::Resul
             let mut last_ten_lines = Vec::with_capacity(20);
             while let Some(line) = stderr_reader.next_line().await.unwrap() {
                 if !line.trim().is_empty() {
+                    let parts = line.split('\r');
+                    let line = parts.last().unwrap_or(&line);
                     if let Some(pb) = &pb {
-                        pb.set_message(line.clone());
+                        pb.set_message(line.to_string());
                     } else {
-                        println!("{tag} {}", line.red());
+                        println!("{tag} {}", line);
                     }
                     if last_ten_lines.len() >= 20 {
                         last_ten_lines.remove(0);
                     }
-                    last_ten_lines.push(line);
+                    last_ten_lines.push(line.to_string());
                 }
             }
             last_ten_lines

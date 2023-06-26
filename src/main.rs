@@ -110,8 +110,6 @@ async fn main() -> anyhow::Result<()> {
         return Ok(());
     }
 
-    // info("preparing tasks...");
-
     let m = MultiProgress::new();
     m.set_move_cursor(true);
     let sty =
@@ -187,7 +185,6 @@ async fn main() -> anyhow::Result<()> {
     ticker.abort();
     let _ = m.clear();
 
-    // info("running tasks...");
     let mut workers = FuturesUnordered::new();
     for task in &tasks {
         let task = task.clone();
