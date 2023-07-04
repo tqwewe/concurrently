@@ -1,6 +1,6 @@
 [package]
 name = "concurrently"
-version = "0.3.1"
+version = "0.3.2"
 authors = ["Ari Seyhun <ariseyhun@live.com.au>"]
 edition = "2021"
 description = "Run multiple processes concurrently."

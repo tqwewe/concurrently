@@ -2,6 +2,10 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## 0.3.2 - 2023-07-04
+
+- - -
+
 ## 0.3.1 - 2023-07-04
 #### Bug Fixes
 - tasks retrying with success exit code - (aa30088) - Ari Seyhun
