@@ -2,6 +2,24 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## 0.3.1 - 2023-07-04
+#### Bug Fixes
+- tasks retrying with success exit code - (aa30088) - Ari Seyhun
+#### Build system
+- fix repository url - (3f7b863) - Ari Seyhun
+#### Features
+- add features config to cargo tasks - (d8354b9) - Ari Seyhun
+- bump version to 0.3.1 - (15a5882) - Ari Seyhun
+- finalize tty - (e50ecfa) - Ari Seyhun
+- add faketty to prepare command - (678ef2e) - Ari Seyhun
+- add fake tty support - (dcef177) - Ari Seyhun
+- bump version to 0.3.0 - (cd2d9f2) - Ari Seyhun
+- many awesome changes - (12eb4b1) - Ari Seyhun
+#### Miscellaneous Chores
+- update lock file - (7ad79af) - Ari Seyhun
+
+- - -
+
 ## 0.2.0 - 2021-12-16
 #### Build system
 - remove commands from cog pre bump hook - (42a2763) - Ari Seyhun
