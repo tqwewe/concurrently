@@ -64,7 +64,8 @@ Cargo tasks are built using cargo with `cargo build -p <name>` where `name` is t
 
 `cargo` must be set to `true` for a task to be a cargo task.
 
-| Config  | Type |                                                                                        |
-|---------|------|----------------------------------------------------------------------------------------|
-| cargo   | Bool | If set to true, treats this task as a cargo crate. The crate will be built on startup. |
-| release | Bool | Builds for release.                                                                    |
+| Config   | Type     |                                                                                        |
+|----------|----------|----------------------------------------------------------------------------------------|
+| cargo    | Bool     | If set to true, treats this task as a cargo crate. The crate will be built on startup. |
+| release  | Bool     | Builds for release.                                                                    |
+| features | [String] | Array of feature flags.                                                                |

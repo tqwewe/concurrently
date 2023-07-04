@@ -61,7 +61,7 @@ impl Task {
     pub async fn prepare(&self, pb: ProgressBar) -> Option<io::Result<ExitStatus>> {
         let result = match &self.opts {
             TaskTypeOptions::Shell(_) => None,
-            TaskTypeOptions::Cargo(CargoTaskOptions { release }) => {
+            TaskTypeOptions::Cargo(CargoTaskOptions { release, features }) => {
                 // Build the project
                 let mut cmd = self.new_command();
                 cmd.arg("cargo")
@@ -71,6 +71,10 @@ impl Task {
                     .arg("--color=always");
                 if *release {
                     cmd.arg("--release");
+                }
+                if !features.is_empty() {
+                    cmd.arg("--features");
+                    cmd.arg(features.join(","));
                 }
 
                 let status = match exec(cmd, &self.tag, Some(pb.clone())).await {
@@ -119,7 +123,7 @@ impl Task {
                 cmd.arg("sh").arg("-c").arg(command.to_string());
                 cmd
             }
-            TaskTypeOptions::Cargo(CargoTaskOptions { release }) => {
+            TaskTypeOptions::Cargo(CargoTaskOptions { release, .. }) => {
                 let mut cmd = self.new_command();
                 cmd.arg(format!(
                     "./target/{}/{}",

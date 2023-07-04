@@ -32,6 +32,7 @@ pub enum TaskTypeOptions {
 #[serde(default)]
 pub struct CargoTaskOptions {
     pub release: bool,
+    pub features: Vec<String>,
 }
 
 #[derive(Clone, Debug, Deserialize)]
