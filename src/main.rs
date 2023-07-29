@@ -7,7 +7,7 @@ use config::Config;
 use futures::{stream::FuturesUnordered, FutureExt, StreamExt};
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use log::{error, info};
-use tokio::{fs, io, time};
+use tokio::{fs, io, signal, time};
 
 use crate::{log::warn, task::Task};
 
@@ -188,39 +188,51 @@ async fn main() -> anyhow::Result<()> {
     let mut workers = FuturesUnordered::new();
     for task in &tasks {
         let task = task.clone();
-        workers.push(Box::pin(
+        workers.push(
             async move {
                 let status = task.run().await?;
                 Result::<_, io::Error>::Ok((status, task))
             }
             .boxed(),
-        ));
+        );
     }
-    while let Some(result) = workers.next().await {
-        if let Ok((status, mut task)) = result {
-            if !status.success() {
-                if task.retries > task.max_retries {
-                    error(format!(
-                        "task {} exited with non-success code too many times, exiting.",
-                        task.name
-                    ));
-                    return Ok(());
-                }
-                let sleep_secs = (task.retries + 1) as u64;
-                warn(format!(
-                    "task exited with non-success code, retrying again in {} seconds...",
-                    sleep_secs
-                ));
-                time::sleep(Duration::from_secs(sleep_secs)).await;
-                task.retries += 1;
-                workers.push(Box::pin(
-                    async move {
-                        let status = task.run().await?;
-                        Result::<_, io::Error>::Ok((status, task))
+
+    loop {
+        tokio::select! {
+            Some(result) = workers.next() => {
+                if let Ok((status, mut task)) = result {
+                    if !status.success() {
+                        if task.retries > task.max_retries {
+                            error(format!(
+                                "task {} exited with non-success code too many times, exiting.",
+                                task.name
+                            ));
+                            return Ok(());
+                        }
+                        let sleep_secs = (task.retries + 1) as u64;
+                        warn(format!(
+                            "task exited with non-success code, retrying again in {} seconds...",
+                            sleep_secs
+                        ));
+                        let task = async move {
+                            tokio::spawn(async move {
+                                time::sleep(Duration::from_secs(sleep_secs)).await;
+                                task.retries += 1;
+                                let status = task.run().await?;
+                                Result::<_, io::Error>::Ok((status, task))
+                            }).await?
+                        }.boxed();
+                        workers.push(task);
                     }
-                    .boxed(),
-                ));
+                }
             }
+            _ = signal::ctrl_c() => {
+                println!("Shutting down...");
+                break;
+            }
+        }
+        if workers.is_empty() {
+            break;
         }
     }
 

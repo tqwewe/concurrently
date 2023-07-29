@@ -182,7 +182,7 @@ async fn exec(mut cmd: Command, tag: &str, pb: Option<ProgressBar>) -> io::Resul
     cmd.stdout(Stdio::piped());
     cmd.stderr(Stdio::piped());
 
-    let mut child = cmd.spawn()?;
+    let mut child = cmd.kill_on_drop(true).spawn()?;
 
     let stdout = child
         .stdout
