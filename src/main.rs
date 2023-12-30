@@ -51,6 +51,10 @@ async fn main() -> anyhow::Result<()> {
     let selected_tasks: Vec<_> = args
         .tasks
         .into_iter()
+        // ignore the first argument(concurrently), when run: cargo concurrently client server
+        .filter(|cmd| {
+            return cmd != "concurrently";
+        })
         .flat_map(|member_string| {
             member_string
                 .split(',')

@@ -10,7 +10,7 @@ categories = ["command-line-utilities"]
 keywords = ["tasks", "concurrently", "cli", "parallel"]
 
 [[bin]]
-name = "concurrently"
+name = "cargo-concurrently"
 path = "src/main.rs"
 
 [dependencies]
